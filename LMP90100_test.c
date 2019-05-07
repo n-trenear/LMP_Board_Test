@@ -38,10 +38,10 @@
 //DRDY  -----   ctl_IO     data  starting
 //RST     -----   ctl_IO     reset
 
-#define MISO  9
-#define MOSI  10
+#define MISO  19
+#define MOSI  20
 #define DRDY  17
-#define SPICS  22
+#define SPICS  26
 #define CS_1()  bcm2835_gpio_write(SPICS,HIGH)
 #define CS_0()  bcm2835_gpio_write(SPICS,LOW)
 #define CS_IS_LOW() (bcm2835_gpio_lev(SPICS) == 0)
@@ -75,7 +75,7 @@ static int  LMP90100_ReadChannel(void)
 	buf[1] = 0x01;  // Upper nibble is 1
 	buf[2] = 0x89;  // Read 0x19 register
 	buf[3] = 0x00;  // Transmit zero.. Response will be written to this value
-	bcm2835_spi_transfern(buf,4);  // Transmit set value of buf, write response into buf for each byte sent.
+	bcm2835_aux_spi_transfern(buf,4);  // Transmit set value of buf, write response into buf for each byte sent.
 	ans = buf[3] & 0x07;  // Read 3 LSBs of 0x19 register
 	return ans;
 }
@@ -91,7 +91,7 @@ static int  LMP90100_ReadChannel(void)
 */
 static float LMP90100_ReadADC(void)
 {
-    float  temp_calc;
+	float  temp_calc;
 	uint8_t buf[6];
 	int32_t adc;
 
@@ -101,11 +101,11 @@ static float LMP90100_ReadADC(void)
 	buf[3] = 0x00;
 	buf[4] = 0x00;
 	buf[5] = 0x00;
-	bcm2835_spi_transfern(buf,6);
+	bcm2835_aux_spi_transfern(buf,6);
 
 	adc =  (((uint32_t) buf[3]) << 16);
 	adc += (((uint32_t) buf[4]) <<  8);
-    adc += (((uint32_t) buf[5]) <<  0);
+	adc += (((uint32_t) buf[5]) <<  0);
 
     temp_calc = (((float)adc) /16777216*4015 - 100)/0.3925;
 
@@ -133,10 +133,13 @@ static unsigned int LMP90100_DRDY (void)
 	  {
         if (ctr > 1)
         {
-
+	    for(int i = 0; i < 4; i++){
           Temp_Reading = LMP90100_ReadADC();
           Channel = LMP90100_ReadChannel();
-          printf("Ch:%02X Temp: %3.1f \r",Channel,Temp_Reading);
+          printf("Ch:%02X Temp: %3.1f \n",Channel,Temp_Reading);
+	  
+	    }
+	    printf("\33[%dA", 4);
           ctr = 0;
           result = 1;
         }
@@ -189,10 +192,10 @@ int  main()
     if (!bcm2835_init())
         return 1;
 
-		bcm2835_spi_begin();
+		bcm2835_aux_spi_begin();
 		bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);   //default
-		bcm2835_spi_setDataMode(BCM2835_SPI_MODE0);                //default
-		bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_8192);//default
+		bcm2835_spi_setDataMode(BCM2835_SPI_MODE1);                //default
+		bcm2835_aux_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_2048);//default
 
     bcm2835_gpio_fsel(SPICS, BCM2835_GPIO_FSEL_OUTP);//
     bcm2835_gpio_write(SPICS, HIGH);
@@ -217,7 +220,7 @@ int  main()
     setup_buf[14] = 0x07;
     setup_buf[15] = 0x60;
 
-    bcm2835_spi_transfern(setup_buf,16);
+    bcm2835_aux_spi_transfern(setup_buf,16);
     CS_1();
 
     while(1)
@@ -239,11 +242,11 @@ int  main()
 			CS_1();
 			cs_state = 1;
 		}
-		bsp_DelayUS(3000);
+		bsp_DelayUS(500000);
 
 	}
 	}
-    bcm2835_spi_end();
+    bcm2835_aux_spi_end();
     bcm2835_close();
 
     return 0;

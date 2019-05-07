@@ -1,2 +1,2 @@
-ads1256_test:ads1256_test.o
-	gcc LMP90100_test.c -o ads1256_test -lbcm2835
+ads1256_test:LMP90100_test.o
+	gcc LMP90100_test.c -o test -lbcm2835
